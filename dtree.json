@@ -1,0 +1,45 @@
+{
+    "promise": ["+Promise"]
+    , "proxy": ["+Proxy"]
+    , "utils": [{
+        "copy": [":PunyJS.core.object.Copy"]
+        , "lookup": [":PunyJS.core.object.Lookup"]
+        , "apply": [":PunyJS.core.object.Apply"]
+    }]
+    , "is": [{
+        "array": [":PunyJS.core.is.Array"]
+        , "regexp": [":PunyJS.core.is.RegExp"]
+        , "func": [":PunyJS.core.is.Func"]
+    }]
+    , "infos": [
+        ":PunyJS.construct.Infos"
+        , {"conflictResolution": "error"}
+    ]
+    , "errors": [
+        ":PunyJS.construct.Errors"
+        , {"conflictResolution": "error"}
+    ]
+    , "construct": [{
+        "interfaceManager": [
+            ":PunyJS.construct._InterfaceManager"
+            , []
+        ]
+        , "definitions": [{
+
+        }]
+        , "prototypeManager": [
+            ":PunyJS.construct._PrototypeManager"
+            , []
+        ]
+        , "prototypes": [{
+
+        }]
+        , "validator": [
+            ":PunyJS.construct._Validator"
+            , []
+        ]
+        , "validators": [{
+
+        }]
+    }]
+}
