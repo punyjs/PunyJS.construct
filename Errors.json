@@ -1,0 +1,18 @@
+{
+    "construct": {
+        "prototype": {
+            "invalid_prototype_namespace": "[Invalid Prototype Namespace] The prototype namespace is invalid. Ensure the namespace is rooted in the 'construct.prototype' abstract branch"
+        }
+        , "validator": {
+            "invalid_validator_namespace": "[Invalid Validator Namespace] The validator namespace is invalid. Ensure the namespace is rooted in the 'construct.validators' abstract branch"
+            , "invalid_validator": "[Invalid Validator] The validator must be a function, regular expression, or array"
+        }
+        , "interface": {
+            "invalid_interface_namespace": "[Invalid Interface Namespace] The interface namespace is invalid. Ensure the namespace is rooted in the 'construct.interfaces' abstract branch"
+            , "missing_required_property": "[Missing Required Property] A required property was missing from the target and has no default"
+            , "failed_coerce": "[Failed Coerce] Failed to coerce the value to the proper type"
+            , "failed_validator": "[Failed Validator] The value failed the validator"
+            , "invalid_target": "[Invalid Target] The target object failed to validate"
+        }
+    }
+}

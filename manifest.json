@@ -1,0 +1,41 @@
+{
+    "name": "punyjs-construct"
+    , "repos": [
+        {
+            "type": "git"
+            , "url": "https://github.com/punyjs/PunyJS.core.git"
+            , "branch": "develop"
+            , "local": "PunyJS/core"
+        }
+    ]
+    , "config": {
+        "strict": true
+        , "output": "PunyJS/construct"
+    }
+    , "iocNamePrefix": "ioc-controller"
+
+    , "entries": [
+        {
+            "type": "ioc.monolith"
+            , "base": []
+            , "dtree": "dtree.json"
+            , "config": {
+                "dtreeFileName": "dtree.js"
+                , "fileName": "index.js"
+                , "engine": "browser"
+            }
+        }
+        , {
+            "type": "test"
+            , "units": {
+                "controller": 3
+                , "app": 0
+            }
+            , "config": {
+                "fileName": "test.json"
+            }
+        }
+        , "{PunyJS.ioc}/manifests/base.manifest.json"
+        , "{PunyJS.ioc}/manifests/browser.manifest.json"
+    ]
+}

@@ -1,0 +1,53 @@
+{
+    "promise": ["+Promise"]
+    , "proxy": ["+Proxy"]
+    , "utils": [{
+        "copy": [":PunyJS.core.object.Copy"]
+        , "lookup": [":PunyJS.core.object.Lookup"]
+        , "apply": [":PunyJS.core.object.Apply"]
+        , "getType": [":PunyJS.core.utils.GetType"]
+    }]
+    , "is": [{
+        "array": [":PunyJS.core.is.Array"]
+        , "object": [":PunyJS.core.is.Object"]
+        , "regexp": [":PunyJS.core.is.RegExp"]
+        , "error": [":PunyJS.core.is.Error"]
+        , "empty": [":PunyJS.core.is.Empty"]
+        , "func": [":PunyJS.core.is.Func"]
+    }]
+    , "infos": [
+        ":PunyJS.construct.Infos"
+        , {"conflictResolution": "error"}
+    ]
+    , "errors": [
+        ":PunyJS.construct.Errors"
+        , {"conflictResolution": "error"}
+    ]
+    , "construct": [{
+        "interfaceManager": [
+            ":PunyJS.construct._InterfaceManager"
+            , []
+        ]
+        , "definitionManager": [
+            ":PunyJS.construct._DefinitionManager"
+            , []
+        ]
+        , "definitions": [{
+
+        }]
+        , "prototypeManager": [
+            ":PunyJS.construct._PrototypeManager"
+            , []
+        ]
+        , "prototypes": [{
+
+        }]
+        , "validator": [
+            ":PunyJS.construct._Validator"
+            , []
+        ]
+        , "validators": [{
+
+        }]
+    }]
+}
