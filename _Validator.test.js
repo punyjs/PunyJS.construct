@@ -57,17 +57,17 @@ function validatorTest1(
     assert(
         function assertFn(test) {
             test("result1 should be")
-            .value(result1)
+            .value(result1.isValid)
             .isTrue()
             ;
 
             test("result2 should be")
-            .value(result2)
+            .value(result2.isValid)
             .isFalse()
             ;
 
             test("result3 should be")
-            .value(result3)
+            .value(result3.isValid)
             .isTrue()
             ;
         }

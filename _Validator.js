@@ -11,8 +11,6 @@ function _Validator(
     , is_regexp
     , is_array
     , is_func
-    , reporter
-    , infos
     , errors
 ) {
 
@@ -49,13 +47,21 @@ function _Validator(
         )
         , results = await promise.all(
             procs
-        );
-
-        return results.every(
+        )
+        , error
+        , isValid = results.every(
             function testEachResult(result) {
-                return result;
+                if (!!result.error && !error) {
+                    error = result.error;
+                }
+                return result.isValid;
             }
         );
+
+        return {
+            "isValid": isValid
+            , "error": error
+        };
     }
     /**
     * @function
@@ -72,18 +78,32 @@ function _Validator(
     * @function
     */
     function validateValue(validator, value) {
-        if (is_regexp(validator)) {
-            return validator.test(value);
+        var isValid = false
+        , error
+        ;
+        try {
+            if (is_regexp(validator)) {
+                isValid = validator.test(value);
+            }
+            else if (is_func(validator)) {
+                isValid = !!validator(value);
+            }
+            else if (is_array(validator)) {
+                isValid = validator.indexOf(value) !== -1;
+            }
+            else {
+                error = `${errors.construct.validator.invalid_validator} (${typeof validator})`;
+            }
         }
-        else if (is_func(validator)) {
-            return !!validator(value);
+        catch (ex) {
+            error = ex.message
         }
-        else if (is_array(validator)) {
-            return validator.indexOf(value) !== -1;
+        finally {
+            return {
+                "isValid": isValid
+                , "error": error
+            };
         }
-        throw new Error(
-            `${errors.construct.validator.invalid_validator} (${typeof validator})`
-        );
     }
     /**
     * @function

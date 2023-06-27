@@ -5,10 +5,14 @@
         "copy": [":PunyJS.core.object.Copy"]
         , "lookup": [":PunyJS.core.object.Lookup"]
         , "apply": [":PunyJS.core.object.Apply"]
+        , "getType": [":PunyJS.core.utils.GetType"]
     }]
     , "is": [{
         "array": [":PunyJS.core.is.Array"]
+        , "object": [":PunyJS.core.is.Object"]
         , "regexp": [":PunyJS.core.is.RegExp"]
+        , "error": [":PunyJS.core.is.Error"]
+        , "empty": [":PunyJS.core.is.Empty"]
         , "func": [":PunyJS.core.is.Func"]
     }]
     , "infos": [
@@ -22,6 +26,10 @@
     , "construct": [{
         "interfaceManager": [
             ":PunyJS.construct._InterfaceManager"
+            , []
+        ]
+        , "definitionManager": [
+            ":PunyJS.construct._DefinitionManager"
             , []
         ]
         , "definitions": [{

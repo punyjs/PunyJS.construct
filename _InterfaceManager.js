@@ -2,11 +2,6 @@
 * The interface manager provides a mechanism to validate objects against
 * definitions and generate objects that fit definition(s).
 * @factory
-* @interface interface_definition
-*   @property {string|array} [prototype] The abstract namespace, or array of
-*   namespaces of the object to use as a the prototype when generating objects
-*   @property {object} properties An object mapping a field names to field
-*   definitions.
 * @interface interface_property
 *   @property {string} name The name of the property
 *   @property {string} type The property data type; string, number, bigint, date
@@ -19,20 +14,27 @@
 */
 function _InterfaceManager(
     construct_prototypeManager
+    , construct_definitionManager
     , construct_validator
-    , construct_definitions$
-    , promise
-    , is_array
-    , utils_apply
-    , reporter
-    , infos
+    , is_object
+    , is_empty
+    , utils_copy
+    , utils_getType
     , errors
 ) {
     /**
-    *
+    * A symbol pointing to a function that returns the interface's definition
     * @field
     */
-    const DefinitionSymbol = Symbol("Definition")
+    const GetDefinitionSymbol = Symbol("getDefinition")
+    /**
+    * @alias
+    */
+    , prototypeManager = construct_prototypeManager
+    /**
+    * @alias
+    */
+    , definitionManager = construct_definitionManager
     /**
     * @worker
     */
@@ -60,185 +62,109 @@ function _InterfaceManager(
 
     return self;
 
-    /**
-    * @function
-    */
-    function validateInterface(namespace, target) {
-
-    }
-
 
     /**
-    * Generates an object that fits the interface namespace(s)
-    * @function
-    */
-    async function generateInterface(namespace, target = {}) {
-        //get the definition for the namespace or namespaces
-        const definition = await lookupDefinition(
-            namespace
-        )
-        , descriptors = createDescriptors(
-            namespace
-            , definition
-            , target
-        )
-        , prototype = !!definition.prototype
-            ? construct_prototypeManager(
-                definition.prototype
-            )
-            : null
-        , interface = Object.create(
-            prototype
-            , descriptors
-        );
-        //validate
-
-        return interface;
-    }
-
-
-    /**
+    * Generates an object that fits the interface definition for the provided
+    * namespace(s)
     * @function
     */
     async function lookupDefinition(namespace) {
-        var definition;
-        //if there are more than 1 namespace, resolve and combine them
-        if (is_array(namespace)) {
-            definition = await combineDefinitions(
-                await resolveDefinitionNamespaces(
-                    namespace //as namespaces
-                )
-            );
-        }
-        //otherwise resolve the single namespace
-        else {
-            definition = await resolveDefinitionNamespace(
-                namespace
-            );
-        }
-        //resolve any properties that are interfaces
-        await resolvePropertyInterfaces(
-            definition.properties
-        );
-
-        return definition;
-    }
-    /**
-    * @function
-    */
-    async function resolveDefinitionNamespaces(namespaces) {
-        return await promise.all(
-            namespaces.map(
-                resolveDefinitionNamespace
-            )
-        );
-    }
-    /**
-    * @function
-    */
-    async function resolveDefinitionNamespace(namespace) {
-        var definition = construct_definitions$(
+        return definitionManager.resolve(
             namespace
-            , {"quiet":true}
         );
+    }
 
-        if (!definition) {
-            throw new Error(
-                `${errors.construct.interface.invalid_interface_namespace} (${namespace})`
+
+    /**
+    * Generates an object that fits the interface definition for the provided
+    * namespace(s)
+    * @function
+    */
+    async function generateInterface(namespace, target) {
+        //remove external references to the target
+        if (is_object(target)) {
+            target = utils_copy(
+                target
             );
         }
-
-        definition.namespace = namespace;
-
-        return definition;
-    }
-    /**
-    * @function
-    */
-    async function combineDefinitions(definitions) {
-        var combinedDefinition = {
-            "namespace": []
-            , "prototype": []
-            , "properties": {}
+        //or create the target if missing
+        else {
+            target = {};
         }
+        //get the definition for the namespace or namespaces
+        const definition = await definitionManager
+            .resolve(
+                namespace
+                , target
+            )
+        //get the prototype for the definition
+        , prototype = !!definition.prototype
+            ? prototypeManager(
+                definition.prototype
+            )
+            : null
         ;
-        //loop through the definitions and combine their protos and properties
-        definitions.forEach(
-            function addEachDefinition(definition) {
-                combinedDefinition.namespace
-                    .concat(
-                        definition.namespace
-                    )
-                ;
-                if (!!definition.prototype) {
-                    combinedDefinition.prototype =
-                        combinedDefinition.prototype.concat(
-                            definition.prototype
-                        )
-                    ;
-                }
-                utils_apply(
-                    definition.properties
-                    , combinedDefinition.properties
-                );
-            }
-        );
-
-        return combinedDefinition;
-    }
-    /**
-    * @function
-    */
-    async function resolvePropertyInterfaces(properties) {
-        //identify the properties that are of type interface
-        var interfaceProperties =
-            Object.keys(properties)
-            .filter(
-                function checkForInterface(propertyName) {
-                    return properties[propertyName].type === "interface";
-                }
-            )
-            .map(
-                function mapProperty(propertyName) {
-                    return properties[propertyName];
-                }
-            )
-        ;
-        //get the definition for each interface property
-        await promise.all(
-            interfaceProperties
-            .map(
-                async function defineEachProperty(property) {
-                    property.definition = await lookupDefinition(
-                        property.namespace
-                    );
-                }
-            )
+        //create the interface from the definition
+        return await createInterface(
+            definition
+            , prototype
+            , target
         );
     }
-
 
 
     /**
     * @function
     */
-    function createDescriptors(namespace, definition, target) {
+    async function createInterface(definition, prototype, target) {
+        var {isValid, violations} = await validateDefinition(
+            definition
+            , target
+        )
+        , descriptors = isValid
+            && await createDescriptors(
+                definition
+                , target
+            )
+        , obj = isValid
+            && Object.create(
+                prototype
+                , descriptors
+            )
+        ;
+        if (!isValid) {
+            throw new Error(
+                `${errors.construct.interface.invalid_target}\tviolations:${violations}`
+            );
+        }
+        
+        return obj;
+    }
+    /**
+    * @function
+    */
+    async function createDescriptors(definition, target) {
         var descriptors = {
-            [DefinitionSymbol]: {
+            [GetDefinitionSymbol]: {
                 "enumerable": true
-                , "value": definition
+                , "value": definitionManager.resolve
+                    .bind(
+                        null
+                        , target
+                    )
             }
         };
 
-        Object.keys(definition.properties)
-        .forEach(
-            function forEachKey(key) {
-                descriptors[key] = createDescriptor(
-                    key
-                    , definition.properties[key]
+        await Promise.all(
+            Object.keys(definition.properties)
+            .map(
+                forEachPropertyKey.bind(
+                    null
+                    , descriptors
+                    , definition
                     , target
-                );
-            }
+                )
+            )
         );
 
         return descriptors;
@@ -246,7 +172,17 @@ function _InterfaceManager(
     /**
     * @function
     */
-    function createDescriptor(propName, property, target) {
+    async function forEachPropertyKey(descriptors, definition, target, key) {
+        descriptors[key] = await createDescriptor(
+            key
+            , definition.properties[key]
+            , target
+        );
+    }
+    /**
+    * @function
+    */
+    async function createDescriptor(propName, property, target) {
         //set the default value if missing fropm the target
         if (!target.hasOwnProperty(propName)) {
             if (property.hasOwnProperty("default")) {
@@ -261,24 +197,32 @@ function _InterfaceManager(
         //add the getter
         var descriptor = {
             "enumerable": true
-            , "writable": property.readonly !== true
         };
-        //add the setter if not readonly
-        if (property.readonly !== true) {
-            descriptor.set = setterFn.bind(
-                null
-                , propName
-                , property
-                , target
-            );
-        }
-        //create interface descriptors
+        //create interface for the descriptor's value
         if (property.type === "interface") {
-            descriptor.descriptors = createDescriptors(
+            descriptor.value = await generateInterface(
                 property.namespace
-                , property.definition
                 , target[propName]
             );
+            descriptor.writable = false;
+        }
+        //add getter/setter
+        else {
+            //add the descriptor's getter
+            descriptor.get = getterFn.bind(
+                null
+                , propName
+                , target
+            );
+            //if the property is not readonly then add set getter
+            if (property.readonly !== true) {
+                descriptor.set = setterFn.bind(
+                    null
+                    , propName
+                    , property
+                    , target
+                );
+            }
         }
 
         return descriptor;
@@ -287,39 +231,179 @@ function _InterfaceManager(
     * @function
     */
     function getterFn(propName, target) {
-        console.log("get", propName)
         return target[propName];
     }
     /**
     * @function
     */
     function setterFn(propName, property, target, newValue) {
-        console.log("set", propName)
-        //determine the type of the new value to ensure it fits the property
-        var newValueType = typeof newValue;
-        //if interface, create the interface
-        if (property.type === "interface") {
-            // newValue = generateInterface(
-            //     propName
-            //     , newValue
-            // );
+        var violations = []
+        , isValid, error
+        ;
+        //validate the new value
+        validateProperty(
+            property
+            , violations
+            , target
+            , propName
+        );
+        //target does not have a property with this name
+        if (!Object.hasOwn(target, propName)) {
+            //if there is a default
+            if (Object.hasOwn(property, "default")) {
+                target[propName] = property.default;
+            }
         }
-        //coerce the type if not the same as the property
-        else if (property.type !== newValueType) {
-            newValue = coerceValue(
-                newValue
+        if (utils_getType(propertyValue) !== property.type) {
+            [propertyValue, error] = coerceValue(
+                propertyValue
                 , property.type
             );
+            
+            if (!!error) {
+                throw new Error(
+                    error
+                );
+            }
+
+            target[propName] = propertyValue;
+        }
+        //try to coerce the type if not the same as the property
+        if (utils_getType(newValue) !== property.type) {
+            ({"coercedValue": newValue} = coerceValue(
+                newValue
+                , property.type
+            ));
         }
         //run the validator if there is one
-        if (property.hasOwnProperty("validator")) {
-            // construct_validator(
-            //     property.validator
-            //     , newValue
-            // );
+        if (Object.hasOwn(property, "validator")) {
+            ({isValid, error} = construct_validator(
+                property.validator
+                , newValue
+            ));
         }
 
         target[propName] = newValue;
+
+        return true;
+    }
+
+    
+    /**
+    * @function
+    */
+    async function validateInterface(namespace, target) {
+        //get the definition for the namespace or namespaces
+        const definition = await lookupDefinition(
+            namespace
+        );
+        return validateDefinition(
+            definition
+            , target
+        );
+    }
+    /**
+    * @function
+    */
+    async function validateDefinition(definition, target) {
+        var violations = []
+        //loop through the definition properties
+        , procs = Object.keys(definition.properties)
+            .map(
+                validateProperty.bind(
+                    null
+                    , definition.properties
+                    , violations
+                    , target
+                )
+            )
+        ;
+
+        await Promise.all(procs);
+
+        return {
+            "isValid": is_empty(violations)
+            , "violations": violations
+        };
+    }
+    /**
+    * @function
+    */
+    async function validateProperty(properties, violations, target, propName) {
+        var property = properties[propName]
+        , propertyValue = target[propName]
+        , error
+        ;
+        
+        //target does not have a property with this name
+        if (!Object.hasOwn(target, propName)) {
+            //check required and value
+            if (property.required === true) {
+                //if there isn't a default
+                if (!Object.hasOwn(property, "default")) {
+                    violations.push(
+                        `${errors.construct.interface.missing_required_property}\tpropName:${propName}`
+                    );
+                    return false;
+                }
+            }
+            return true;
+        }
+        //if the property is an interface then run the validator recursaively
+        if (property.type === "interface") {
+            let {"isValid": isInterfaceValid, "violations": interfaceViolations} =
+                await validateInterface(
+                    property.namespace
+                    , target[propName]
+                )
+            ;
+            //combine the violations
+            for (let violation of interfaceViolations) {
+                violations.push(violation);
+            }
+            return isInterfaceValid;
+        }
+        //do type check
+        //try to coerce the type if not the same as the property
+        else if (utils_getType(propertyValue) !== property.type) {
+            ({"coercedValue": propertyValue, error} = coerceValue(
+                propertyValue
+                , property.type
+            ));
+            //if there was an error add that to the violations
+            if (!!error) {
+                violations.push(
+                    `${errors.construct.interface.failed_coerce}\tpropName:${propName},error:${error}`
+                );
+                return false;
+            }
+            //see if we failed to coerce the value
+            if (utils_getType(propertyValue) !== property.type) {
+                violations.push(
+                    `${errors.construct.interface.failed_coerce}\tpropName:${propName},type:${utils_getType(propertyValue)}`
+                );
+                return false;
+            }
+        }
+        //run the validator if there is one
+        if (Object.hasOwn(property, "validator")) {
+            ({isValid, error} = construct_validator(
+                property.validator
+                , propertyValue
+            ));
+            if (!!error) {
+                violations.push(
+                    error
+                );
+                return false;
+            }
+            if (!isValid) {
+                violations.push(
+                    `${errors.construct.interface.failed_validator}\tpropName:${propName},validator:${property.validator}`
+                );
+                return false;
+            }
+        }
 
         return true;
     }
@@ -327,23 +411,48 @@ function _InterfaceManager(
     * @function
     */
     function coerceValue(value, type) {
-        switch(type) {
-            case "bigint":
-                return BigInt(value);
-            break;
-            case "string":
-                return String(value);
-            break;
-            case "number":
-                return Number(value);
-            break;
-            case "date":
-                return new Date(value);
-            break;
-            case "bool":
-                return !!value;
-            break;
+        var coercedValue
+        , error
+        ;
+
+        try {
+            switch(type) {
+                case "bigint":
+                    coercedValue = BigInt(value);
+                break;
+                case "string":
+                    if (value === null || value === undefined) {
+                        coercedValue = "";
+                    }
+                    else {
+                        coercedValue = String(value);
+                    }
+                break;
+                case "number":
+                    coercedValue = Number(value);
+                    if (isNaN(coercedValue)) {
+                        error = "Invalid Number";
+                    }
+                break;
+                case "date":
+                    coercedValue = new Date(value);
+                    if (coercedValue.toString() === "Invalid Date") {
+                        error = "Invalid Date";
+                    }
+                break;
+                case "bool":
+                    coercedValue = !!value;
+                break;
+            }
         }
+        catch(ex) {
+            error = ex.message;
+        }
+       
+        return {
+            "coercedValue": coercedValue
+            , "error": error
+        };
     }
 
 

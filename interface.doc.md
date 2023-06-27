@@ -7,6 +7,9 @@ The PunyJS.construct.interface system provides a way to define object signatures
 ```json
 {
     "prototype": "app.User"
+    , "extends": [
+        "app.Person"
+    ]
     , "properties": {
         "email": {
             "validator": "std.web.email"
@@ -34,6 +37,7 @@ The PunyJS.construct.interface system provides a way to define object signatures
 #### Structure
 
 * prototype
+* extends
 * fields
     - field
         * name        -> the field name
@@ -41,4 +45,4 @@ The PunyJS.construct.interface system provides a way to define object signatures
         * [required]  -> a value is required for the field
         * [validator] -> a namespace pointing to a regular expression, validator function, or a list or a range of valid values
         * [default]   -> the default value to use
-        * [readonly]  -> 
+        * [readonly]  ->
