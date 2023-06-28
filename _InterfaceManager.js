@@ -9,6 +9,7 @@
 *   @property {mixed} [default] The default value to use when generating objects
 *   @property {boolean} [required] If true, the field must be given a value at
 *   the time of generation. Not needed if there is a default.
+*   @property {boolean} [readonly] If true, the field is readonly
 *   @property {string} [validator] The abstract namespace of a validating
 *   function or a regular expression
 */
