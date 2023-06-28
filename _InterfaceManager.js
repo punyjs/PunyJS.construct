@@ -132,13 +132,30 @@ function _InterfaceManager(
                 , descriptors
             )
         ;
+        //throw if invalid target
         if (!isValid) {
             throw new Error(
                 `${errors.construct.interface.invalid_target}\tviolations:${violations}`
             );
         }
-        
-        return obj;
+        //create the proxy
+        return new Proxy(
+            obj
+            , {
+                "set": handleSet.bind(
+                    null
+                    , definition.properties
+                )
+                , "deleteProperty": handleDelete.bind(
+                    null
+                    , definition.properties
+                )
+                , "setPrototypeOf": handleSetPrototypeOf.bind(
+                    null
+                    , definition.properties
+                )
+            }
+        );
     }
     /**
     * @function
@@ -208,36 +225,19 @@ function _InterfaceManager(
         }
         //add getter/setter
         else {
-            //add the descriptor's getter
-            descriptor.get = getterFn.bind(
-                null
-                , propName
-                , target
-            );
-            //if the property is not readonly then add set getter
-            if (property.readonly !== true) {
-                descriptor.set = setterFn.bind(
-                    null
-                    , propName
-                    , property
-                    , target
-                );
-            }
+            descriptor.value = target[propName];
+            descriptor.writable = descriptor.configurable = !property.readonly;
         }
 
         return descriptor;
     }
+    
     /**
     * @function
     */
-    function getterFn(propName, target) {
-        return target[propName];
-    }
-    /**
-    * @function
-    */
-    function setterFn(propName, property, target, newValue) {
-        var violations = []
+    function handleSet(properties, target, propName, newValue) {
+        var property = properties[propName]
+        , violations = []
         , isValid, error
         ;
         //validate the new value
@@ -246,46 +246,53 @@ function _InterfaceManager(
             , violations
             , target
             , propName
+            , newValue
         );
         //target does not have a property with this name
-        if (!Object.hasOwn(target, propName)) {
+        if (newValue === undefined) {
             //if there is a default
             if (Object.hasOwn(property, "default")) {
                 target[propName] = property.default;
             }
         }
-        if (utils_getType(propertyValue) !== property.type) {
-            [propertyValue, error] = coerceValue(
-                propertyValue
+        //try to coerce the type if not the same as the property
+        if (utils_getType(newValue) !== property.type) {
+            ({"coercedValue": newValue, error} = coerceValue(
+                newValue
                 , property.type
-            );
-            
+            ));
             if (!!error) {
                 throw new Error(
                     error
                 );
             }
-
-            target[propName] = propertyValue;
-        }
-        //try to coerce the type if not the same as the property
-        if (utils_getType(newValue) !== property.type) {
-            ({"coercedValue": newValue} = coerceValue(
-                newValue
-                , property.type
-            ));
-        }
-        //run the validator if there is one
-        if (Object.hasOwn(property, "validator")) {
-            ({isValid, error} = construct_validator(
-                property.validator
-                , newValue
-            ));
         }
 
         target[propName] = newValue;
 
         return true;
+    }
+    /**
+    * @function
+    */
+    function handleDelete(properties, target, propName) {
+        var property = properties[propName];
+        if (property?.required === true) {
+            throw new Error(
+                `${errors.construct.interface.prop_required}\tnamespace:${target[GetDefinitionSymbol]().namespace},propName:${propName}`
+            );
+        }
+        delete target[propName];
+
+        return true;
+    }
+    /**
+    * @function
+    */
+    function handleSetPrototypeOf(target, prototype) {
+        throw new Error(
+            `${errors.construct.interface.no_set_prototype}\tnamespace:${target[GetDefinitionSymbol]().namespace}`
+        );
     }
 
     
@@ -329,12 +336,15 @@ function _InterfaceManager(
     /**
     * @function
     */
-    async function validateProperty(properties, violations, target, propName) {
+    async function validateProperty(properties, violations, target, propName, ...rest) {
         var property = properties[propName]
         , propertyValue = target[propName]
         , error
         ;
-        
+        //see if we are testing a new value
+        if (rest.length === 1) {
+            propertyValue = rest[0];
+        }
         //target does not have a property with this name
         if (!Object.hasOwn(target, propName)) {
             //check required and value

@@ -13,6 +13,8 @@
             , "failed_coerce": "[Failed Coerce] Failed to coerce the value to the proper type"
             , "failed_validator": "[Failed Validator] The value failed the validator"
             , "invalid_target": "[Invalid Target] The target object failed to validate"
+            , "no_set_prototype": "[No Set Prototype] Interface prototypes cannot be changed"
+            , "prop_required": "[Prop Required] The required property cannot be deleted"
         }
     }
 }
